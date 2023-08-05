@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+
+<style type="text/css">
+body{ margin:  0;
+	  padding: 0;
+	  font-family:"Segoe UI", sans-serif;
+	  background-color: black;
+	  color: white;
+	  }
+	
+	  
+div {
+  padding: 25px;
+}
+
+h1 {
+  padding: 0px;
+  margin: 0px
+}
+</style>
+
+
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Portfolio - Anastazie Towers</title>
+</head>
+
+<body>
+<div style="position:absolute">
+	<h1>Anastazie Towers</h1>
+	<h2>project portfolio</h2>
+	<p>move the mouse :)</p>
+</div>
+ 
+<canvas id="theCanvas" 
+		 style="position:relative"
+		 onmousemove="mouse_moved(event)" 
+		 width="0" 
+		 height="0"
+		 padding="0"
+		 margin="0">
+	Canvas not supported; please update your browser.
+</canvas>
+ 
+</body>
+</html>
+
+
+<script>
+
+class Vec {
+	constructor(x, y, z) {
+		this.x = x;
+		this.y = y;
+		this.z = z;
+	}
+	
+	p(v) {
+		return new Vec(v.x+this.x, v.y+this.y, v.z+this.z);
+	}	
+	
+	s(v) {
+		return this.p(v.m(-1))
+	}
+	
+	m(c) {
+		return new Vec(this.x*c, this.y*c, this.z*c);
+	}
+	
+	scale(c) {
+		this.x *= c;
+		this.y *= c;
+		this.z *= c;
+	}
+	
+	add(w) {
+		this.x += w.x;
+		this.y += w.y;
+		this.z += w.z;
+		
+	}
+	
+	get mag() {
+		return Math.sqrt(this.x**2 + this.y**2 + this.z**2);
+	}
+}
+
+class Dot {
+	constructor(pos, vel) {
+		this.pos = pos;
+		this.vel = vel;
+		this.birth_time = performance.now();
+	}
+	
+	update() {
+		var v = this.vel.mag**2;
+		this.vel.scale(Math.max(1-DRAG*v, 0));
+		this.pos.add(this.vel);
+	}
+	
+	pull(to) {
+		const dif = this.pos.s(to);
+		const d = dif.mag;
+		this.vel.add(dif.m(-d*PULL));
+	}
+	
+	get liveliness() {
+		return Math.max(1-0.0001*(performance.now() - this.birth_time), 0)
+	}
+	get sr() {return 1+5*sigmoid((this.pos.z)/100)*this.liveliness}
+	get so() {return sigmoid((this.pos.z)/50)}
+	get sx() {return this.pos.x}
+	get sy() {return this.pos.y}
+	get sc() {return rgb(0, 255*this.so, 255*this.so, 1 )}
+	
+
+}
+
+
+
+function rgb(r, g, b, a) {
+	return `rgba(${r}, ${g}, ${b}, ${a})`
+}
+
+function sigmoid(x) {
+	return Math.exp(x) / (Math.exp(x) + 1)
+}
+
+function draw() {
+	context.clearRect(0, 0, canvas.width, canvas.height);
+	
+	
+	for (var i = 0; i < dots.length; i++) {
+		//console.log(i+" "+dots[i].px+" "+dots[i].py)
+		
+		context.beginPath();
+		context.fillStyle = dots[i].sc;
+		context.arc(Math.round(dots[i].sx), Math.round(dots[i].sy), dots[i].sr, 0, 2*Math.PI);
+		context.fill();
+	}
+	
+}
+
+function update() {
+
+	mouse_vec = new Vec(mpos.x, mpos.y,0)
+
+	for (var i = 0; i < dots.length; i++) {
+		dots[i].pull(mouse_vec);
+		dots[i].update();
+		if (dots[i].liveliness == 0) {
+			dots.shift()
+		}
+	}
+}
+
+function mouse_moved(event) {
+
+	function getMousePos(canvas, event) {
+	
+		var rect = canvas.getBoundingClientRect();
+		return {
+			x: Math.round((event.clientX - rect.left) / (rect.right - rect.left) * canvas.width),
+			y: Math.round((event.clientY - rect.top) / (rect.bottom - rect.top) * canvas.height)
+		};
+	}
+	
+	mpos = getMousePos(canvas, event);
+	
+	dx = event.movementX;
+	dy = event.movementY;
+	if (Math.abs(dx) + Math.abs(dy) > MIN_SPEW_SPEED) {
+		//console.log("d"+mpos.x+" "+ mpos.y)
+		dots.push(new Dot(new Vec(mpos.x, mpos.y,0), new Vec(dx,dy,dy)));
+		if (dots.length > MAX_DOTS) {
+			dots.shift()
+		}
+	}
+	
+}
+
+
+function loop() {
+	update();
+	draw();
+	window.setTimeout(loop, 1000/30);
+}
+
+var PULL = 0.00003
+var DRAG = 0.0001
+var MAX_DOTS = 100
+var MIN_SPEW_SPEED = 5
+
+var canvas = document.getElementById("theCanvas");
+canvas.width  = window.innerWidth;
+canvas.height = window.innerHeight;
+
+var context = canvas.getContext("2d");
+var mpos = {x: 0, y: 0}
+
+var dots = new Array()
+
+
+loop();
+
+
+
+
+</script>
